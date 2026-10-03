@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.alpha
 import androidx.core.graphics.blue
@@ -38,6 +39,7 @@ import tachiyomi.presentation.core.components.CheckboxItem
 import tachiyomi.presentation.core.components.SettingsChipRow
 import tachiyomi.presentation.core.components.SettingsItemsPaddings
 import tachiyomi.presentation.core.components.SliderItem
+import tachiyomi.presentation.core.components.material.DISABLED_ALPHA
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import java.time.LocalTime
@@ -136,27 +138,29 @@ internal fun ColumnScope.ColorFilterPage(viewModel: ReaderSettingsViewModel) {
                 )
             }
         }
-
-        val colorFilterSchedule by viewModel.preferences.colorFilterSchedule.collectAsState()
-        CheckboxItem(
-            label = stringResource(MR.strings.pref_color_filter_schedule),
-            pref = viewModel.preferences.colorFilterSchedule,
-        )
-        if (colorFilterSchedule) {
-            val scheduleStart by viewModel.preferences.colorFilterScheduleStart.collectAsState()
-            val scheduleEnd by viewModel.preferences.colorFilterScheduleEnd.collectAsState()
-            TimeItem(
-                label = stringResource(MR.strings.pref_color_filter_schedule_start),
-                minutes = scheduleStart,
-                onChange = { viewModel.preferences.colorFilterScheduleStart.set(it) },
-            )
-            TimeItem(
-                label = stringResource(MR.strings.pref_color_filter_schedule_end),
-                minutes = scheduleEnd,
-                onChange = { viewModel.preferences.colorFilterScheduleEnd.set(it) },
-            )
-        }
     }
+
+    // Always shown, but only usable while the custom color filter is enabled.
+    val colorFilterSchedule by viewModel.preferences.colorFilterSchedule.collectAsState()
+    val scheduleStart by viewModel.preferences.colorFilterScheduleStart.collectAsState()
+    val scheduleEnd by viewModel.preferences.colorFilterScheduleEnd.collectAsState()
+    CheckboxItem(
+        label = stringResource(MR.strings.pref_color_filter_schedule),
+        pref = viewModel.preferences.colorFilterSchedule,
+        enabled = colorFilter,
+    )
+    TimeItem(
+        label = stringResource(MR.strings.pref_color_filter_schedule_start),
+        minutes = scheduleStart,
+        enabled = colorFilter && colorFilterSchedule,
+        onChange = { viewModel.preferences.colorFilterScheduleStart.set(it) },
+    )
+    TimeItem(
+        label = stringResource(MR.strings.pref_color_filter_schedule_end),
+        minutes = scheduleEnd,
+        enabled = colorFilter && colorFilterSchedule,
+        onChange = { viewModel.preferences.colorFilterScheduleEnd.set(it) },
+    )
 
     CheckboxItem(
         label = stringResource(MR.strings.pref_grayscale),
@@ -172,6 +176,7 @@ internal fun ColumnScope.ColorFilterPage(viewModel: ReaderSettingsViewModel) {
 private fun TimeItem(
     label: String,
     minutes: Int,
+    enabled: Boolean,
     onChange: (Int) -> Unit,
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -183,7 +188,8 @@ private fun TimeItem(
 
     Row(
         modifier = Modifier
-            .clickable { showDialog = true }
+            .alpha(if (enabled) 1f else DISABLED_ALPHA)
+            .clickable(enabled = enabled) { showDialog = true }
             .fillMaxWidth()
             .padding(
                 horizontal = SettingsItemsPaddings.Horizontal,
@@ -203,7 +209,7 @@ private fun TimeItem(
         )
     }
 
-    if (showDialog) {
+    if (showDialog && enabled) {
         TimePickerDialog(
             title = label,
             initialTime = time,
