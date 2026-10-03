@@ -156,6 +156,20 @@ class ReaderPreferences(
 
     val colorFilterMode: Preference<Int> = preferenceStore.getInt("color_filter_mode", 0)
 
+    val colorFilterSchedule: Preference<Boolean> = preferenceStore.getBoolean("pref_color_filter_schedule", false)
+
+    // Minutes since midnight
+    val colorFilterScheduleStart: Preference<Int> = preferenceStore.getInt(
+        "color_filter_schedule_start",
+        ColorFilterSchedule.DEFAULT_START,
+    )
+
+    // Minutes since midnight
+    val colorFilterScheduleEnd: Preference<Int> = preferenceStore.getInt(
+        "color_filter_schedule_end",
+        ColorFilterSchedule.DEFAULT_END,
+    )
+
     val grayscale: Preference<Boolean> = preferenceStore.getBoolean("pref_grayscale", false)
 
     val invertedColors: Preference<Boolean> = preferenceStore.getBoolean("pref_inverted_colors", false)

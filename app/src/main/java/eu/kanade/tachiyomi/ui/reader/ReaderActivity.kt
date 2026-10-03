@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,7 @@ import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Success
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
+import eu.kanade.tachiyomi.ui.reader.setting.ColorFilterSchedule
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
@@ -81,6 +83,7 @@ import eu.kanade.tachiyomi.util.system.readerBackgroundColor
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.view.setComposeContent
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -100,6 +103,7 @@ import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.util.collectAsState
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.seconds
 
 class ReaderActivity : BaseActivity() {
@@ -435,9 +439,23 @@ class ReaderActivity : BaseActivity() {
             ReaderPreferences.ColorFilterMode.getOrNull(colorOverlayMode)?.second
         }
 
+        val colorOverlayScheduled by readerPreferences.colorFilterSchedule.collectAsState()
+        val colorOverlayScheduleStart by readerPreferences.colorFilterScheduleStart.collectAsState()
+        val colorOverlayScheduleEnd by readerPreferences.colorFilterScheduleEnd.collectAsState()
+        // Only ticks while a schedule is set, re-evaluating at every minute change.
+        val currentTime by produceState(LocalTime.now(), colorOverlayScheduled) {
+            if (!colorOverlayScheduled) return@produceState
+            while (true) {
+                value = LocalTime.now()
+                delay(ColorFilterSchedule.millisUntilNextMinute(value))
+            }
+        }
+        val colorOverlayInSchedule = !colorOverlayScheduled ||
+            ColorFilterSchedule.isActive(currentTime, colorOverlayScheduleStart, colorOverlayScheduleEnd)
+
         ReaderContentOverlay(
             brightness = state.brightnessOverlayValue,
-            color = colorOverlay.takeIf { colorOverlayEnabled },
+            color = colorOverlay.takeIf { colorOverlayEnabled && colorOverlayInSchedule },
             colorBlendMode = colorOverlayBlendMode,
         )
 
